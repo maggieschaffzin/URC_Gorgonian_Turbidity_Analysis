@@ -243,10 +243,11 @@ mean_density_nr_sites$DepthZone <- factor(mean_density_nr_sites$DepthZone, level
 
 #Installing ggrepel
 #install.packages("ggrepel")
+
 # Make DepthZone an ordered factor
 combined_data$DepthZone <- factor(combined_data$DepthZone, levels = c("Inner", "Middle", "Outer", "Deep", "ARM"))
 #Plotting density at NR Sites by depth
-ggplot(mean_density_nr_sites, aes(x = DepthZone, y = mean_density)) +
+ggplot(combined_data, aes(x = DepthZone, y = mean_density)) +
   geom_boxplot(alpha = 0.7, fill = "lightblue", color = "darkblue") +
   geom_jitter(width = 0.1, alpha = 0.6, color = "blue", shape = 16, size = 2) +
   geom_text_repel(aes(label = ifelse(mean_density >= 62, Site, "")), size = 3, box.padding = 0.3) +
@@ -309,15 +310,11 @@ combined_data <- combined_data %>%
     se = sd(mean_density) / sqrt(n())
   )
 
-#Creating Site Type on combined dataset
-combined_data <- combined_data %>%
-  mutate(SiteType = ifelse(DepthZone == "ARM", "AR", "NR"))
-
 #Custom colors for depth zones
 
 #Plotting NR. vs AR densities
 ggplot(combined_data, aes(x = SiteType, y = mean_density, fill = ifelse(SiteType == "NR", DepthZone, SiteType))) +
-  geom_bar(stat = "identity", position = position_dodge(width = 0.9), width = 0.5, alpha = 0.7, color = "black") +
+  geom_boxplot(stat = "identity", position = position_dodge(width = 0.9), width = 0.5, alpha = 0.7, color = "black") +
   geom_errorbar(aes(ymin = mean_density - se, ymax = mean_density + se), 
                 width = 0.2, position = position_dodge(width = 0.9), color = "darkred") +
   scale_fill_manual(values = c("Inner" = pastel_colors[1], "Middle" = pastel_colors[2], "Outer" = pastel_colors[3], "Deep" = pastel_colors[5], "AR" = "turquoise")) +
@@ -593,9 +590,8 @@ p8 <- ggplot(data = habitat_info_density, aes(x = Substrate_SD, y = mean_density
 p8
 
 # Filter out ARM DepthZone
-habitat_info_density_filtered <- habitat_info_density %>%
-  filter(DepthZone != "ARM")
-
+habitat_info_density_3 <- habitat_info_density_2 %>%
+  filter(Region != "Artificial Reef")
 
 #Linear Model for Mean Density vs Substrate SD
 lm_model10 <- lm(Substrate_SD ~ mean_density, data = habitat_info_density_filtered)
@@ -603,33 +599,59 @@ lm_model10 <- lm(Substrate_SD ~ mean_density, data = habitat_info_density_filter
 # Print the summary of the linear model
 summary(lm_model10)
 
-# Create the slope equation text
-slope_eq <- paste("y = ", round(coef(lm_model10)[2], 2), "x + ", round(coef(lm_model10)[1], 2))
+# Define the alpha values for DepthZones
+alpha_values <- c("Inner" = 0.25, "Middle" = 0.5, "Outer" = 0.75, "Deep" = 1.0)
 
-#Calculating Position for the Slope Equation
-x_pos <- max(habitat_info_density_filtered$Substrate_SD) * 0.8  # 80% of the max x value
-y_pos <- predict(lm_model10, newdata = data.frame(Substrate_SD = x_pos))  # Predicted y at x_pos
+# Fit linear models with zero intercepts for each region
+malibu_data <- subset(habitat_info_density_3, Region == "Malibu")
+pv_data <- subset(habitat_info_density_3, Region == "Palos Verdes")
 
-# Scatterplot for Linear Model for Substrate SD only Natural Reefs
-p9 <- ggplot(data = habitat_info_density_filtered, aes(x = Substrate_SD, y = mean_density)) +
-  geom_point(aes(color = DepthZone), size = 3, alpha = 0.7) + 
-  geom_text_repel(aes(label = ifelse(mean_density >= 53, Site, "")), size = 3) + 
-  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "black") +  
-  labs(x = "Substrate SD", y = "Mean Density (per 100m²)", 
-       title = "Linear Regression of Mean Density by Substrate SD") +  
+malibu_model <- lm(mean_density ~ Substrate_SD - 1, data = malibu_data)
+pv_model <- lm(mean_density ~ Substrate_SD - 1, data = pv_data)
+
+# Generate predictions
+malibu_data$predicted <- predict(malibu_model, newdata = malibu_data)
+pv_data$predicted <- predict(pv_model, newdata = pv_data)
+
+# Combine data back
+combined_data2 <- rbind(malibu_data, pv_data)
+
+# Scatterplot for Linear Model for Substrate SD Malibu vs PVR
+p9 <- ggplot(data = habitat_info_density_3, aes(x = Substrate_SD, y = mean_density)) +
+  geom_point(aes(color = Region, alpha = DepthZone), size = 3) + 
+  geom_line(data = combined_data2, aes(x = Substrate_SD, y = predicted, group = Region), se = TRUE, color = "black") +
+  labs(x = "Substrate SD", y = "Mean Density (per 100m²)") +  
+  scale_color_manual(values = c("Malibu" = "purple", "Palos Verdes" = "blue")) +
+  scale_alpha_manual(values = alpha_values) + 
   theme_classic() +
-  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+  theme(
+    axis.title = element_text(size = 12, face = "bold"),
+    legend.position = "right") +
+  facet_wrap (~Region, scales = "free")
+
+print(p9)
+# Define the alpha values for DepthZones
+alpha_values <- c("Inner" = 0.25, "Middle" = 0.5, "Outer" = 0.75, "Deep" = 1.0)
+
+# Scatterplot for Linear Model for Substrate SD Malibu vs PVR
+p9 <- ggplot(data = habitat_info_density_3, aes(x = Substrate_SD, y = mean_density)) +
+  geom_point(aes(color = Region, alpha = DepthZone), size = 3) + 
+  geom_smooth(aes(group = Region), method = "lm", formula = y ~ x, se = TRUE, color = "black") +  
+  labs(x = "Substrate SD", y = "Mean Density (per 100m²)") +  
+  scale_color_manual(values = c("Malibu" = "purple", "Palos Verdes" = "blue")) +
+  scale_alpha_manual(values = alpha_values) + 
+  theme_classic() +
+  theme(
         axis.title = element_text(size = 12, face = "bold"),
         legend.position = "right") +
-  facet_grid(scales = "free") +
-  geom_text(x = Inf, y = Inf, label = slope_eq, hjust = 1.1, vjust = 4.0, size = 4, color = "black", fontface = "italic")
+  facet_wrap (~Region, scales = "free")+
 
 print(p9)
 
 # Scatterplot for Linear Model for Substrate Index only Natural Reefs
 p10 <- ggplot(data = habitat_info_density_filtered, aes(x = Substrate_index, y = mean_density)) +
   geom_point(aes(color = DepthZone)) +  
-  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "black") +  
+  geom_smooth(method = "lm", formula = y ~ x, se = TRUE, color = "black") +  
   labs(x = "Substrate Index", y = "Mean Density (per 100m2)") +  
   ggtitle("Linear Regression of Mean Density by Substrate Index") +  
   theme_classic() +
