@@ -7,7 +7,7 @@ All datasets pertaining to Gorgonian density, habitat type, and habitat characte
 Data for the stormwater, wastewater, and riverine outfall locations in Los Angeles come from the publicly available Los Angeles County Stormdrain System: https://pw.lacounty.gov/fcd/StormDrain/index.cfm
 
 # What is in this repository?
-Data folder: contains daily revised versions of R scripts for datasets created from historical datasets from the Vantuna Research Group (final version used is URC_Dataset_July_24.R). Shapefiles for California map figure also available in Data folder.
+Data folder: contains daily revised versions of R scripts for datasets created from historical datasets from the Vantuna Research Group (final version used is URC_Dataset_July_24.R). Mapping folder: Shapefiles for California map figure from Chelsea M. Williams in this folder. 
 Scripts folder: contains daily revised versions of R scripts for data analysis (final version used is July_24_Analyses.R)
 Figures folder: contains final figures created in R Studio and used for URC end of Summer Conference Poster 2024
 This ReadME file describing data.
